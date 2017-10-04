@@ -38,7 +38,9 @@ std::string DataTypeNested::extractNestedTableName(const std::string & nested_na
 {
     const char * first_pos = strchr(nested_name.data(), '.');
     const char * last_pos = strrchr(nested_name.data(), '.');
-    if (first_pos != last_pos)
+    if (first_pos == nested_name.data())
+        first_pos = nullptr;
+    else if (first_pos != last_pos)
         throw Exception("Invalid nested column name: " + nested_name, ErrorCodes::INVALID_NESTED_NAME);
     return first_pos == nullptr ? nested_name : nested_name.substr(0, first_pos - nested_name.data());
 }
@@ -48,7 +50,9 @@ std::string DataTypeNested::extractNestedColumnName(const std::string & nested_n
 {
     const char * first_pos = strchr(nested_name.data(), '.');
     const char * last_pos = strrchr(nested_name.data(), '.');
-    if (first_pos != last_pos)
+    if (first_pos == nested_name.data())
+        first_pos = nullptr;
+    else if (first_pos != last_pos)
         throw Exception("Invalid nested column name: " + nested_name, ErrorCodes::INVALID_NESTED_NAME);
     return last_pos == nullptr ? nested_name : nested_name.substr(last_pos - nested_name.data() + 1);
 }
