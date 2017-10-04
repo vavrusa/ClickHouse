@@ -1747,7 +1747,7 @@ void MergeTreeData::freezePartition(const ASTPtr & partition_ast, const String &
         partition_id = getPartitionIDFromQuery(partition_ast, context);
 
     if (prefix)
-        LOG_DEBUG(log, "Freezing parts with prefix " + prefix.value());
+        LOG_DEBUG(log, "Freezing parts with prefix " + *prefix);
     else
         LOG_DEBUG(log, "Freezing parts with partition ID " + partition_id);
 
@@ -1771,7 +1771,7 @@ void MergeTreeData::freezePartition(const ASTPtr & partition_ast, const String &
             continue;
         if (prefix)
         {
-            if (!startsWith(part_info.partition_id, prefix.value()))
+            if (!startsWith(part_info.partition_id, *prefix))
                 continue;
         }
         else if (part_info.partition_id != partition_id)
