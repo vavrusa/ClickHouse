@@ -417,7 +417,7 @@ void DDLWorker::parseQueryAndResolveHost(DDLTask & task)
     }
 
     if (!task.query || !(task.query_on_cluster = dynamic_cast<ASTQueryWithOnCluster *>(task.query.get())))
-        throw Exception("Recieved unknown DDL query", ErrorCodes::UNKNOWN_TYPE_OF_QUERY);
+        throw Exception("Received unknown DDL query", ErrorCodes::UNKNOWN_TYPE_OF_QUERY);
 
     task.cluster_name = task.query_on_cluster->cluster;
     task.cluster = context.tryGetCluster(task.cluster_name);
@@ -426,6 +426,16 @@ void DDLWorker::parseQueryAndResolveHost(DDLTask & task)
         throw Exception("DDL task " + task.entry_name + " contains current host " + task.host_id.readableString()
             + " in cluster " + task.cluster_name + ", but there are no such cluster here.", ErrorCodes::INCONSISTENT_CLUSTER_DEFINITION);
     }
+
+
+    /// Statements that are expected to run on each instance: CREATE | ATTACH | DROP | DETACH
+    /// If the table is replicated:
+    /// * statements that run on leader replica: ALTER TABLE DETACH | DROP PARTITION
+    /// * statements that are expected to run on any single replica: ALTER
+    /// If the table is not replicated:
+    /// * statements that run on each instance: ALTER
+    bool consider_replication = (dynamic_cast<const ASTAlterQuery *>(task.query.get()) != nullptr);
+
 
     /// Try to find host from task host list in cluster
     /// At the first, try find exact match (host name and ports should be literally equal)
@@ -438,6 +448,9 @@ void DDLWorker::parseQueryAndResolveHost(DDLTask & task)
         for (size_t replica_num = 0; replica_num < shards[shard_num].size(); ++replica_num)
         {
             const Cluster::Address & address = shards[shard_num][replica_num];
+
+            if (found_exact_match && !consider_replication)
+                continue;
 
             if (address.host_name == task.host_id.host_name && address.port == task.host_id.port)
             {
@@ -467,6 +480,9 @@ void DDLWorker::parseQueryAndResolveHost(DDLTask & task)
         for (size_t replica_num = 0; replica_num < shards[shard_num].size(); ++replica_num)
         {
             const Cluster::Address & address = shards[shard_num][replica_num];
+
+            if (found_via_resolving && !consider_replication)
+                continue;
 
             if (isLocalAddress(address.resolved_address, context.getTCPPort()))
             {
